@@ -1,0 +1,193 @@
+{% extends "base.html" %}
+{% from "_fan_macros.html" import user_name with context %}
+{% block title %}竞猜页 · 慢马争霸赛{% endblock %}
+{% block body_class %}predict-page{% endblock %}
+{% block content %}
+<section class="page-hero predict-hero race-hero">
+    <div class="race-copy">
+        <p class="eyebrow">Prediction Room</p>
+        <h1>竞猜页</h1>
+        {% if race %}
+            <p class="race-line">当前竞猜对象：Round {{ race.round }} · {{ race.name_cn }} · {{ race.name }}，正赛开始时间：{{ race.start_at }}（北京时间）。</p>
+        {% else %}
+            <p class="race-line">当前赛季暂无未来正赛，暂时不能出题或答题。</p>
+        {% endif %}
+    </div>
+    {% if race and race.map_image %}
+        <figure class="race-map-card">
+            <img src="{{ url_for('race_media', filename=race.map_image) }}" alt="{{ race.name_cn }}赛道地图">
+            <figcaption>{{ race.name_cn }}</figcaption>
+        </figure>
+    {% endif %}
+</section>
+
+<section class="predict-tabs" aria-label="竞猜页导航">
+    <a class="{% if tab == 'create' %}active{% endif %}" href="{{ url_for('predict_page', tab='create') }}">出题</a>
+    <a class="{% if tab == 'answer' %}active{% endif %}" href="{{ url_for('predict_page', tab='answer') }}">答题</a>
+    <a class="{% if tab == 'leaderboard' %}active{% endif %}" href="{{ url_for('predict_page', tab='leaderboard') }}">排行榜</a>
+</section>
+
+{% if principle_html %}
+    <details class="rules-disclosure">
+        <summary>点击查看竞猜规则</summary>
+        <div class="rules-content">{{ principle_html|safe }}</div>
+    </details>
+{% endif %}
+
+{% if tab == 'create' %}
+    <section class="predict-layout single">
+        <form class="predict-panel question-form" method="post" action="{{ url_for('create_question') }}">
+            <input type="hidden" name="csrf_token" value="{{ g.csrf_token }}">
+            <div class="section-head">
+                <div>
+                    <p class="eyebrow">Create</p>
+                    <h2>出题</h2>
+                </div>
+                {% if g.user %}
+                    <span>{{ g.user.points }} Pts</span>
+                {% endif %}
+            </div>
+
+            {% if not g.user %}
+                <p class="panel-note">登录后才能出题。</p>
+            {% elif not race %}
+                <p class="panel-note">当前没有可出题的未来正赛。</p>
+            {% else %}
+                <label>
+                    题目
+                    <input name="title" maxlength="120" placeholder="例如：本场正赛冠军是谁？" required>
+                </label>
+                <label>
+                    出题积分
+                    <input name="stake" type="number" min="{{ min_stake }}" max="{{ max_stake }}" step="1" placeholder="{{ min_stake }}-{{ max_stake }}" required>
+                </label>
+                <div class="options-editor">
+                    <span>选项</span>
+                    {% for index in range(1, 9) %}
+                        <input name="options" placeholder="选项 {{ index }}{% if index > 2 %}（可留空）{% endif %}" {% if index <= 2 %}required{% endif %}>
+                    {% endfor %}
+                </div>
+                <p class="panel-note">题目发布后不可修改，出题积分会进入本题奖池。正确答案需在正赛开始后揭晓。</p>
+                <button type="submit">发布题目</button>
+            {% endif %}
+        </form>
+    </section>
+{% elif tab == 'leaderboard' %}
+    <section class="predict-layout single">
+        <section class="predict-panel">
+            <div class="section-head">
+                <div>
+                    <p class="eyebrow">Leaderboard</p>
+                    <h2>总积分榜</h2>
+                </div>
+                <span>Top 50</span>
+            </div>
+            <div class="score-list">
+                {% for row in leaderboard %}
+                    <div class="score-row">
+                        <span>{{ "%02d"|format(loop.index) }}</span>
+                        <strong>{{ user_name(row) }}</strong>
+                        <b>{{ row.points }}</b>
+                    </div>
+                {% else %}
+                    <p class="panel-note">暂无用户。</p>
+                {% endfor %}
+            </div>
+        </section>
+    </section>
+{% else %}
+    <section class="answer-filter-tabs" aria-label="题目筛选">
+        <a class="{% if question_filter == 'all' %}active{% endif %}" href="{{ url_for('predict_page', tab='answer', filter='all') }}">全部</a>
+        <a class="{% if question_filter == 'open' %}active{% endif %}" href="{{ url_for('predict_page', tab='answer', filter='open') }}">可答</a>
+        <a class="{% if question_filter == 'submitted' %}active{% endif %}" href="{{ url_for('predict_page', tab='answer', filter='submitted') }}">已提交</a>
+        <a class="{% if question_filter == 'pending' %}active{% endif %}" href="{{ url_for('predict_page', tab='answer', filter='pending') }}">待揭晓</a>
+        <a class="{% if question_filter == 'settled' %}active{% endif %}" href="{{ url_for('predict_page', tab='answer', filter='settled') }}">已结算</a>
+    </section>
+
+    <section class="question-list">
+        {% for question in questions %}
+            <article class="predict-panel question-card">
+                <div class="question-topline">
+                    <span>Round {{ question.race_round }} · {{ question.race_name }}</span>
+                    <b>{{ question.total_pool }} Pts Pool</b>
+                </div>
+                <h2>{{ question.title }}</h2>
+                <p class="panel-note">出题者：{{ user_name({"username": question.creator_name, "fan_driver": question.creator_fan_driver}) }} · 截止：{{ question.race_start_at }}（北京时间） · 状态：{{ question.status }}</p>
+                <div class="pool-summary" aria-label="当前奖池">
+                    <span>当前总奖池 <strong>{{ question.total_pool }}</strong> Pts</span>
+                    <span>出题奖池 {{ question.stake }} Pts</span>
+                    <span>答题投注 {{ question.answer_bet_total }} Pts</span>
+                </div>
+
+                {% if question.status == 'settled' %}
+                    <div class="settled-answer">
+                        已揭晓：
+                        {% for option in question.options %}
+                            {% if option.id == question.correct_option_id %}
+                                <strong>{{ option.label }}</strong>
+                            {% endif %}
+                        {% endfor %}
+                    </div>
+                {% endif %}
+
+                {% if g.user and question.is_answerable and not question.user_answer_option_id %}
+                    <form class="answer-form" method="post" action="{{ url_for('submit_answer', question_id=question.id) }}">
+                        <input type="hidden" name="csrf_token" value="{{ g.csrf_token }}">
+                        <label>
+                            投注积分
+                            <input name="bet" type="number" min="{{ min_answer_bet }}" max="{{ max_answer_bet }}" step="1" placeholder="{{ min_answer_bet }}-{{ max_answer_bet }}" required>
+                        </label>
+                        <p class="panel-note">投注会立即扣除并进入奖池，答对者按投注额比例瓜分。若无人答对，奖池归出题人。</p>
+                        <div class="option-grid">
+                            {% for option in question.options %}
+                                <label class="option-choice">
+                                    <input type="radio" name="option_id" value="{{ option.id }}" required>
+                                    <span>{{ option.label }}</span>
+                                </label>
+                            {% endfor %}
+                        </div>
+                        <button type="submit">提交答案</button>
+                    </form>
+                {% else %}
+                    <div class="option-grid readonly">
+                        {% for option in question.options %}
+                            <div class="option-choice {% if option.id == question.user_answer_option_id %}selected{% endif %} {% if question.status == 'settled' and option.id == question.correct_option_id %}correct{% endif %}">
+                                <span>{{ option.label }}</span>
+                                <small>{{ option.answer_count }} 人 · {{ option.bet_total }} Pts</small>
+                            </div>
+                        {% endfor %}
+                    </div>
+                    {% if not g.user %}
+                        <p class="panel-note">登录后才能答题。</p>
+                    {% elif question.user_answer_option_id %}
+                        <p class="panel-note">你已投注 {{ question.user_answer_bet }} Pts，投注后不能修改。</p>
+                    {% elif question.user_answer_option_id %}
+                        <p class="panel-note">你已提交答案，不能修改。</p>
+                    {% elif not question.is_answerable and question.status != 'settled' %}
+                        <p class="panel-note">本题已截止，等待揭晓。</p>
+                    {% endif %}
+                {% endif %}
+
+                {% if question.can_settle %}
+                    <form class="settle-form" method="post" action="{{ url_for('settle_question_route', question_id=question.id) }}">
+                        <input type="hidden" name="csrf_token" value="{{ g.csrf_token }}">
+                        <label>
+                            揭晓正确答案
+                            <select name="correct_option_id" required>
+                                {% for option in question.options %}
+                                    <option value="{{ option.id }}">{{ option.label }}</option>
+                                {% endfor %}
+                            </select>
+                        </label>
+                        <button type="submit">结算奖池</button>
+                    </form>
+                {% endif %}
+            </article>
+        {% else %}
+            <section class="predict-panel">
+                <p class="panel-note">当前筛选下没有题目。</p>
+            </section>
+        {% endfor %}
+    </section>
+{% endif %}
+{% endblock %}

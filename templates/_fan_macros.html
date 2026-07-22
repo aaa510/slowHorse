@@ -1,0 +1,13 @@
+{% macro fan_tag(code) -%}
+    {%- set driver = fan_driver_by_code.get(code) if code else none -%}
+    {%- if driver -%}
+        <span class="driver-tag {{ driver.team_class }}">{{ driver.code }}<span class="number">{{ driver.number }}</span></span>
+    {%- endif -%}
+{%- endmacro %}
+
+{% macro user_name(user) -%}
+    <span class="user-name">
+        {{ fan_tag(user.fan_driver) }}
+        <span>{{ user.username }}</span>
+    </span>
+{%- endmacro %}

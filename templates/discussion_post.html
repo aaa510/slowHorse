@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+{% from "_fan_macros.html" import user_name with context %}
+{% block title %}{{ post.title }} · 讨论区{% endblock %}
+{% block body_class %}discussion-page{% endblock %}
+{% block content %}
+{% include "_meme_background.html" %}
+
+<section class="thread-layout">
+    <article class="forum-panel thread-post">
+        <a class="back-link" href="{{ url_for('discussion') }}">返回讨论区</a>
+        <p class="eyebrow">Thread</p>
+        <h1>{{ post.title }}</h1>
+        <p class="thread-meta">{{ user_name(post) }} · {{ post.created_at }}</p>
+        <div class="thread-body">{{ post.body }}</div>
+    </article>
+
+    <section class="forum-panel replies-panel">
+        <div class="section-head">
+            <div>
+                <p class="eyebrow">Replies</p>
+                <h2>回复</h2>
+            </div>
+            <span>{{ replies|length }}</span>
+        </div>
+
+        <div class="reply-list">
+            {% for reply in replies %}
+                <article class="reply-card">
+                    <div class="reply-meta">
+                        <strong>{{ user_name(reply) }}</strong>
+                        <span>{{ reply.created_at }}</span>
+                    </div>
+                    {% if reply.body %}
+                        <p>{{ reply.body }}</p>
+                    {% endif %}
+                    {% if reply.image_path %}
+                        <img class="reply-image" src="{{ url_for('static', filename=reply.image_path) }}" alt="回复图片">
+                    {% endif %}
+                </article>
+            {% else %}
+                <p class="panel-note">暂无回复。</p>
+            {% endfor %}
+        </div>
+    </section>
+
+    <aside class="forum-panel reply-compose">
+        <div class="section-head compact">
+            <div>
+                <p class="eyebrow">Reply</p>
+                <h2>发表回复</h2>
+            </div>
+        </div>
+        {% if g.user %}
+            <form class="forum-form" method="post" action="{{ url_for('create_discussion_reply', post_id=post.id) }}" enctype="multipart/form-data">
+                <input type="hidden" name="csrf_token" value="{{ g.csrf_token }}">
+                <label>
+                    回复内容
+                    <textarea name="body" maxlength="2000" rows="6" placeholder="写下你的回复…"></textarea>
+                </label>
+                <label>
+                    图片
+                    <input name="image" type="file" accept="image/png,image/jpeg,image/webp,image/gif">
+                </label>
+                <p class="panel-note">图片支持 jpg、png、webp、gif，单次上传最大 5MB。</p>
+                <button type="submit">发布回复</button>
+            </form>
+        {% else %}
+            <p class="panel-note">登录后才能回复。</p>
+        {% endif %}
+    </aside>
+</section>
+{% endblock %}

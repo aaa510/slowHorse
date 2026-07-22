@@ -1,0 +1,7 @@
+{% if memes %}
+    <div class="meme-background" aria-hidden="true">
+        {% for meme in memes %}
+            <span class="meme-word meme-word-{{ loop.index }}">{{ meme }}</span>
+        {% endfor %}
+    </div>
+{% endif %}

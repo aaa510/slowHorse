@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% block title %}{% if mode == "login" %}登录{% else %}注册{% endif %} · 慢马争霸赛{% endblock %}
+{% block content %}
+<section class="auth-shell">
+    <form class="auth-panel" method="post">
+        <input type="hidden" name="csrf_token" value="{{ g.csrf_token }}">
+        <p class="eyebrow">{% if mode == "login" %}Account Login{% else %}New Account{% endif %}</p>
+        <h1>{% if mode == "login" %}登录账号{% else %}创建账号{% endif %}</h1>
+        <label>
+            用户名
+            <input name="username" autocomplete="username" minlength="2" maxlength="24" required>
+        </label>
+        <label>
+            密码
+            <input name="password" type="password" autocomplete="{% if mode == 'login' %}current-password{% else %}new-password{% endif %}" minlength="8" required>
+        </label>
+        {% if mode == "register" %}
+            <label>
+                确认密码
+                <input name="confirm_password" type="password" autocomplete="new-password" minlength="8" required>
+            </label>
+            <label class="check-row">
+                <input name="accept_terms" type="checkbox" required>
+                <span>我确认本站仅用于娱乐积分或活动身份管理，不涉及现金、奖品或任何形式的赌博。</span>
+            </label>
+        {% endif %}
+        <button type="submit">{% if mode == "login" %}登录{% else %}注册{% endif %}</button>
+        {% if mode == "login" %}
+            <p class="switch-link">还没有账号？<a href="{{ url_for('register') }}">去注册</a></p>
+        {% else %}
+            <p class="switch-link">已有账号？<a href="{{ url_for('login') }}">去登录</a></p>
+        {% endif %}
+    </form>
+</section>
+{% endblock %}

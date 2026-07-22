@@ -1,0 +1,69 @@
+{% extends "base.html" %}
+{% from "_fan_macros.html" import user_name with context %}
+{% block title %}讨论区 · 慢马争霸赛{% endblock %}
+{% block body_class %}discussion-page{% endblock %}
+{% block content %}
+{% include "_meme_background.html" %}
+
+<section class="page-hero discussion-hero">
+    <p class="eyebrow">Community Paddock</p>
+    <h1>讨论区</h1>
+    <p>发布比赛观点、竞猜想法和车手讨论。回复支持图片上传。</p>
+</section>
+
+<section class="forum-layout">
+    <section class="forum-feed">
+        <div class="section-head">
+            <div>
+                <p class="eyebrow">Threads</p>
+                <h2>帖子列表</h2>
+            </div>
+            <span>{{ posts|length }} Posts</span>
+        </div>
+
+        <div class="post-list">
+            {% for post in posts %}
+                <a class="post-row" href="{{ url_for('discussion_post', post_id=post.id) }}">
+                    <div>
+                        <strong>{{ post.title }}</strong>
+                        <p>{{ post.body }}</p>
+                    </div>
+                    <aside>
+                        <span>{{ post.reply_count }} 回复</span>
+                        <small>{{ user_name(post) }} · {{ post.last_activity_at }}</small>
+                    </aside>
+                </a>
+            {% else %}
+                <div class="forum-panel">
+                    <p class="panel-note">还没有帖子，登录后可以发布第一条讨论。</p>
+                </div>
+            {% endfor %}
+        </div>
+    </section>
+
+    <aside class="forum-panel compose-panel">
+        <div class="section-head compact">
+            <div>
+                <p class="eyebrow">New Thread</p>
+                <h2>发帖</h2>
+            </div>
+        </div>
+        {% if g.user %}
+            <form class="forum-form" method="post" action="{{ url_for('create_discussion_post') }}">
+                <input type="hidden" name="csrf_token" value="{{ g.csrf_token }}">
+                <label>
+                    标题
+                    <input name="title" maxlength="80" placeholder="聊聊本周正赛走势" required>
+                </label>
+                <label>
+                    正文
+                    <textarea name="body" maxlength="5000" rows="8" placeholder="写下你的观点…" required></textarea>
+                </label>
+                <button type="submit">发布帖子</button>
+            </form>
+        {% else %}
+            <p class="panel-note">登录后才能发帖。</p>
+        {% endif %}
+    </aside>
+</section>
+{% endblock %}

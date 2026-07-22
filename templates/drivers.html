@@ -1,0 +1,64 @@
+{% extends "base.html" %}
+{% block title %}车手 · 慢马争霸赛{% endblock %}
+{% block body_class %}drivers-page{% endblock %}
+{% block content %}
+<section class="page-hero driver-hero">
+    <p class="eyebrow">Driver Information</p>
+    <h1>车手信息</h1>
+
+</section>
+
+<section class="drivers-layout">
+    <section class="driver-roster" aria-label="车手头像列表">
+        <div class="section-head">
+            <div>
+                <p class="eyebrow">Roster</p>
+                <h2>车手阵列</h2>
+            </div>
+            <span>{{ drivers|length }} Drivers</span>
+        </div>
+
+        <div class="driver-grid">
+            {% for driver in drivers %}
+                <a class="driver-card" href="{{ url_for('driver_detail', slug=driver.slug) }}" style="--accent: {{ driver.accent }}">
+                    <div class="driver-photo">
+                        {% if driver.image %}
+                            <img src="{{ url_for('driver_media', filename=driver.image) }}" alt="{{ driver.name }}">
+                        {% else %}
+                            <span>{{ driver.initials }}</span>
+                        {% endif %}
+                    </div>
+                    <div class="driver-card-copy">
+                        <strong>{{ driver.name }}</strong>
+                        <span>{{ driver.team }}</span>
+                    </div>
+                    <em>#{{ driver.number }}</em>
+                </a>
+            {% endfor %}
+        </div>
+    </section>
+
+    <aside class="standings-panel" aria-label="当前积分榜">
+        <div class="section-head compact">
+            <div>
+                <p class="eyebrow">Standings</p>
+                <h2>当前积分榜</h2>
+            </div>
+            <span>Pts</span>
+        </div>
+
+        <div class="standings-list">
+            {% for row in standings %}
+                <a class="standing-row" href="{{ url_for('driver_detail', slug=row.slug) }}" style="--accent: {{ row.accent }}">
+                    <span class="rank">{{ "%02d"|format(row.rank) }}</span>
+                    <div>
+                        <strong>{{ row.name }}</strong>
+                        <small>{{ row.team }} · #{{ row.number }}</small>
+                    </div>
+                    <b>{{ row.points }}</b>
+                </a>
+            {% endfor %}
+        </div>
+    </aside>
+</section>
+{% endblock %}

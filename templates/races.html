@@ -1,0 +1,121 @@
+{% extends "base.html" %}
+{% block title %}大赛 · 慢马争霸赛{% endblock %}
+{% block body_class %}races-page{% endblock %}
+{% block content %}
+<section class="page-hero races-hero">
+    <div>
+        <p class="eyebrow">Race Calendar</p>
+        <h1>2026 大赛时间线</h1>
+        <p>所有比赛时间均为北京时间，精确到小时。已完赛站点可查看比赛排名，未开始站点暂不开放详情。</p>
+    </div>
+    <div class="race-counter">
+        <strong>{{ completed_count }}</strong>
+        <span>/ {{ races|length }} Completed</span>
+    </div>
+</section>
+
+<section class="race-calendar" aria-label="2026 赛季大赛列表">
+    {% for race in races %}
+        <article class="race-card {% if race.can_open %}is-open{% else %}is-locked{% endif %}">
+            <div class="race-card-map">
+                {% if race.map_image %}
+                    <img src="{{ url_for('race_media', filename=race.map_image) }}" alt="{{ race.name_cn }}赛道图">
+                {% else %}
+                    <span>Round {{ "%02d"|format(race.round) }}</span>
+                {% endif %}
+            </div>
+            <div class="race-card-body">
+                <div class="race-card-top">
+                    <span>Round {{ "%02d"|format(race.round) }}</span>
+                    {% if race.is_completed %}
+                        <b>已完赛</b>
+                    {% elif race.is_started %}
+                        <b>等待结果</b>
+                    {% else %}
+                        <b>未开始</b>
+                    {% endif %}
+                </div>
+                <h2>{{ race.name_cn }}</h2>
+                <p>{{ race.name }}</p>
+                <time datetime="{{ race.start_at }}">{{ race.start_at }} 北京时间</time>
+
+                {% if race.can_open %}
+                    <button class="race-detail-trigger" type="button" data-dialog="race-dialog-{{ race.round }}">查看排名</button>
+                {% else %}
+                    <span class="race-lock">正赛开始后开放详情</span>
+                {% endif %}
+            </div>
+        </article>
+
+        {% if race.can_open %}
+            <dialog class="race-dialog" id="race-dialog-{{ race.round }}">
+                <div class="race-dialog-shell">
+                    <form method="dialog">
+                        <button class="dialog-close" aria-label="关闭" type="submit">×</button>
+                    </form>
+                    <header class="race-dialog-head">
+                        <div>
+                            <p class="eyebrow">Round {{ "%02d"|format(race.round) }}</p>
+                            <h2>{{ race.name_cn }}</h2>
+                            <span>{{ race.name }} · {{ race.start_at }} 北京时间</span>
+                        </div>
+                        {% if race.map_image %}
+                            <img src="{{ url_for('race_media', filename=race.map_image) }}" alt="{{ race.name_cn }}赛道图">
+                        {% endif %}
+                    </header>
+
+                    {% if race.winner %}
+                        <section class="winner-strip">
+                            <span>Winner</span>
+                            <strong>{{ race.winner.driver }}</strong>
+                            <small>{{ race.winner.team }} · {{ race.winner.time_or_retired }}</small>
+                        </section>
+                    {% endif %}
+
+                    <div class="race-result-table" role="table" aria-label="{{ race.name_cn }}比赛排名">
+                        <div class="result-row result-head" role="row">
+                            <span>Pos</span>
+                            <span>No</span>
+                            <span>Driver</span>
+                            <span>Team</span>
+                            <span>Laps</span>
+                            <span>Time</span>
+                            <span>Pts</span>
+                        </div>
+                        {% for result in race.results %}
+                            <div class="result-row" role="row">
+                                <span>{{ result.position }}</span>
+                                <span>{{ result.car_number }}</span>
+                                <strong>{{ result.driver }} <em>{{ result.driver_code }}</em></strong>
+                                <span>{{ result.team }}</span>
+                                <span>{{ result.laps }}</span>
+                                <span>{{ result.time_or_retired }}</span>
+                                <b>{{ result.points }}</b>
+                            </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </dialog>
+        {% endif %}
+    {% endfor %}
+</section>
+
+<script>
+    document.querySelectorAll("[data-dialog]").forEach((trigger) => {
+        trigger.addEventListener("click", () => {
+            const dialog = document.getElementById(trigger.dataset.dialog);
+            if (dialog) {
+                dialog.showModal();
+            }
+        });
+    });
+
+    document.querySelectorAll(".race-dialog").forEach((dialog) => {
+        dialog.addEventListener("click", (event) => {
+            if (event.target === dialog) {
+                dialog.close();
+            }
+        });
+    });
+</script>
+{% endblock %}

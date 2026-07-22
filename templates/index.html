@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+{% block title %}慢马争霸赛 · Slow Horse{% endblock %}
+{% block body_class %}home-page{% endblock %}
+{% block content %}
+<section class="home-hero" aria-label="慢马争霸赛主页">
+    <video class="hero-video" autoplay muted loop playsinline preload="auto" poster="{{ url_for('static', filename='home/slowhorse-poster.png') }}">
+        <source src="{{ url_for('static', filename='home/slowhorse-home.mp4') }}" type="video/mp4">
+    </video>
+    <div class="video-shade"></div>
+    <div class="scanlines" aria-hidden="true"></div>
+
+    <div class="hero-content">
+        <p class="eyebrow">Slow Horse Championship</p>
+        <h1>
+            <span>慢马</span>
+            <span>争霸赛</span>
+        </h1>
+        <p class="hero-copy">
+            不是最快的人赢，而是最会判断节奏的人留下名字。欢迎来到 Slow Horse，一个围绕车手、大赛、竞猜和讨论区展开的赛事社区。
+        </p>
+        {% if next_race %}
+            <section class="race-countdown" data-race-start="{{ next_race.start_dt.isoformat() }}">
+                <p>距离下一站 {{ next_race.name_cn }} 还剩</p>
+                <div class="countdown-grid" aria-live="polite">
+                    <span><strong data-countdown-days>0</strong>天</span>
+                    <span><strong data-countdown-hours>0</strong>时</span>
+                    <span><strong data-countdown-minutes>0</strong>分</span>
+                    <span><strong data-countdown-seconds>0</strong>秒</span>
+                </div>
+                <small>Round {{ next_race.round }} · {{ next_race.name }} · {{ next_race.start_at }} 北京时间</small>
+            </section>
+        {% endif %}
+        <div class="hero-actions">
+            {% if g.user %}
+                <a class="button-link" href="{{ url_for('profile') }}">进入个人页</a>
+                <a class="ghost-link" href="{{ url_for('races') }}">查看大赛日历</a>
+            {% else %}
+                <a class="button-link" href="{{ url_for('register') }}">加入争霸赛</a>
+                <a class="ghost-link" href="{{ url_for('login') }}">登录账号</a>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="ticker" aria-hidden="true">
+        <div class="ticker-track">
+            {% for _ in range(2) %}
+                <div class="ticker-group">
+                    <span>Slow Horse</span>
+                    <span>Race Calendar</span>
+                    <span>Driver Board</span>
+                    <span>Prediction Room</span>
+                    <span>Community</span>
+                    <span>Slow Horse</span>
+                    <span>Race Calendar</span>
+                    <span>Driver Board</span>
+                </div>
+            {% endfor %}
+        </div>
+    </div>
+</section>
+{% endblock %}

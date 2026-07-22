@@ -1,0 +1,134 @@
+{% extends "base.html" %}
+{% from "_fan_macros.html" import fan_tag, user_name with context %}
+{% block title %}个人页 · 慢马争霸赛{% endblock %}
+{% block body_class %}profile-page{% endblock %}
+{% block content %}
+{% if honor_award %}
+    <section class="honor-award" aria-live="polite">
+        <div class="honor-burst">
+            <span>Day {{ honor_award.day }}</span>
+            <h2>恭喜解锁</h2>
+            <strong>{{ honor_award.honor }}</strong>
+        </div>
+    </section>
+{% endif %}
+
+<section class="page-hero profile-hero">
+    <div>
+        <p class="eyebrow">My Garage</p>
+        <h1>{{ user_name(profile.user) }}</h1>
+        <p>账户积分、登录荣誉和社区记录都在这里。</p>
+    </div>
+    <div class="profile-points">
+        <span>Current Points</span>
+        <strong>{{ profile.user.points }}</strong>
+    </div>
+</section>
+
+<section class="profile-layout">
+    <section class="profile-panel profile-license">
+        <div class="section-head">
+            <div>
+                <p class="eyebrow">Honor Title</p>
+                <h2>{{ profile.current_honor or "暂无称号" }}</h2>
+            </div>
+            <span>{{ profile.user.login_days }} Days</span>
+        </div>
+        <div class="license-grid">
+            <div>
+                <small>用户名</small>
+                <strong>{{ user_name(profile.user) }}</strong>
+            </div>
+            <div>
+                <small>累计登录</small>
+                <strong>{{ profile.user.login_days }} 天</strong>
+            </div>
+            <div>
+                <small>上次领取</small>
+                <strong>{{ profile.user.last_login_award_date or "尚未领取" }}</strong>
+            </div>
+            <div>
+                <small>注册时间</small>
+                <strong>{{ profile.user.created_at }}</strong>
+            </div>
+        </div>
+    </section>
+
+    <section class="profile-panel">
+        <div class="section-head compact">
+            <div>
+                <p class="eyebrow">Fan Club</p>
+                <h2>加入粉丝团</h2>
+            </div>
+        </div>
+        <form class="fan-form" method="post" action="{{ url_for('update_fan_driver') }}">
+            <input type="hidden" name="csrf_token" value="{{ g.csrf_token }}">
+            <div class="fan-grid">
+                {% for driver in fan_drivers %}
+                    <label class="fan-choice {% if profile.user.fan_driver == driver.code %}selected{% endif %}">
+                        <input type="radio" name="fan_driver" value="{{ driver.code }}" {% if profile.user.fan_driver == driver.code %}checked{% endif %} required>
+                        {{ fan_tag(driver.code) }}
+                    </label>
+                {% endfor %}
+            </div>
+            <button type="submit">保存粉丝团</button>
+        </form>
+    </section>
+
+    <section class="profile-panel">
+        <div class="section-head compact">
+            <div>
+                <p class="eyebrow">Honor Road</p>
+                <h2>荣誉进度</h2>
+            </div>
+            <span>{{ profile.honor_progress|selectattr("unlocked")|list|length }}/{{ profile.honor_progress|length }}</span>
+        </div>
+        <div class="honor-grid">
+            {% for honor in profile.honor_progress %}
+                {% if honor.unlocked %}
+                    <div class="honor-card unlocked {% if honor.current %}current{% endif %}">
+                        <span>Day {{ honor.day }}</span>
+                        <strong>{{ honor.name }}</strong>
+                    </div>
+                {% endif %}
+            {% endfor %}
+        </div>
+    </section>
+
+    <section class="profile-panel">
+        <div class="section-head compact">
+            <div>
+                <p class="eyebrow">Stats</p>
+                <h2>站内统计</h2>
+            </div>
+        </div>
+        <div class="profile-stat-grid">
+            <div><span>出题</span><strong>{{ profile.stats.created_questions }}</strong></div>
+            <div><span>答题</span><strong>{{ profile.stats.answers }}</strong></div>
+            <div><span>答对</span><strong>{{ profile.stats.correct_answers }}</strong></div>
+            <div><span>帖子</span><strong>{{ profile.stats.posts }}</strong></div>
+            <div><span>回复</span><strong>{{ profile.stats.replies }}</strong></div>
+        </div>
+    </section>
+
+    <section class="profile-panel">
+        <div class="section-head compact">
+            <div>
+                <p class="eyebrow">Point Log</p>
+                <h2>最近积分记录</h2>
+            </div>
+        </div>
+        <div class="transaction-list">
+            {% for tx in profile.transactions %}
+                <div class="transaction-row">
+                    <span class="{% if tx.amount > 0 %}plus{% else %}minus{% endif %}">{{ "%+d"|format(tx.amount) }}</span>
+                    <strong>{{ tx.reason }}</strong>
+                    <small>{{ tx.created_at }}</small>
+                </div>
+            {% else %}
+                <p class="panel-note">暂无积分变化记录。</p>
+            {% endfor %}
+        </div>
+    </section>
+</section>
+{% endblock %}
