@@ -1134,8 +1134,20 @@ select {
     font-weight: 700;
 }
 
+.score-row strong {
+    min-width: 0;
+    overflow-wrap: anywhere;
+}
+
+.score-row .user-name {
+    max-width: 100%;
+    flex-wrap: wrap;
+}
+
 .score-row b {
     justify-self: end;
+    min-width: 70px;
+    text-align: right;
     color: var(--acid);
     font-family: "Barlow Condensed", sans-serif;
     font-size: 28px;
@@ -2141,6 +2153,22 @@ select {
 
     .transaction-row small {
         grid-column: 2;
+    }
+
+    .score-row {
+        grid-template-columns: 42px minmax(0, 1fr) 74px;
+        gap: 8px;
+        padding: 9px;
+    }
+
+    .score-row span {
+        width: 34px;
+        font-size: 18px;
+    }
+
+    .score-row b {
+        min-width: 62px;
+        font-size: 24px;
     }
 }
 
