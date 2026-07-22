@@ -1121,7 +1121,7 @@ select {
     background: rgba(0, 0, 0, 0.22);
 }
 
-.score-row span {
+.score-row > span {
     display: grid;
     place-items: center;
     width: 38px;
@@ -1764,9 +1764,19 @@ select {
 }
 
 .profile-license {
+    grid-column: 1;
     background:
         linear-gradient(135deg, rgba(215, 255, 54, 0.1), transparent 54%),
         rgba(255, 255, 255, 0.055);
+}
+
+.profile-honor-road {
+    grid-column: 1;
+}
+
+.profile-fan-club {
+    grid-column: 2;
+    grid-row: 1 / span 2;
 }
 
 .license-grid {
@@ -2143,6 +2153,13 @@ select {
         grid-template-columns: 1fr;
     }
 
+    .profile-license,
+    .profile-honor-road,
+    .profile-fan-club {
+        grid-column: auto;
+        grid-row: auto;
+    }
+
     .profile-stat-grid {
         grid-template-columns: repeat(2, minmax(0, 1fr));
     }
@@ -2161,7 +2178,7 @@ select {
         padding: 9px;
     }
 
-    .score-row span {
+    .score-row > span {
         width: 34px;
         font-size: 18px;
     }

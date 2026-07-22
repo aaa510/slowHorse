@@ -54,7 +54,27 @@
         </div>
     </section>
 
-    <section class="profile-panel">
+    <section class="profile-panel profile-honor-road">
+        <div class="section-head compact">
+            <div>
+                <p class="eyebrow">Honor Road</p>
+                <h2>荣誉进度</h2>
+            </div>
+            <span>{{ profile.honor_progress|selectattr("unlocked")|list|length }}/{{ profile.honor_progress|length }}</span>
+        </div>
+        <div class="honor-grid">
+            {% for honor in profile.honor_progress %}
+                {% if honor.unlocked %}
+                    <div class="honor-card unlocked {% if honor.current %}current{% endif %}">
+                        <span>Day {{ honor.day }}</span>
+                        <strong>{{ honor.name }}</strong>
+                    </div>
+                {% endif %}
+            {% endfor %}
+        </div>
+    </section>
+
+    <section class="profile-panel profile-fan-club">
         <div class="section-head compact">
             <div>
                 <p class="eyebrow">Fan Club</p>
@@ -73,26 +93,6 @@
             </div>
             <button type="submit">保存粉丝团</button>
         </form>
-    </section>
-
-    <section class="profile-panel">
-        <div class="section-head compact">
-            <div>
-                <p class="eyebrow">Honor Road</p>
-                <h2>荣誉进度</h2>
-            </div>
-            <span>{{ profile.honor_progress|selectattr("unlocked")|list|length }}/{{ profile.honor_progress|length }}</span>
-        </div>
-        <div class="honor-grid">
-            {% for honor in profile.honor_progress %}
-                {% if honor.unlocked %}
-                    <div class="honor-card unlocked {% if honor.current %}current{% endif %}">
-                        <span>Day {{ honor.day }}</span>
-                        <strong>{{ honor.name }}</strong>
-                    </div>
-                {% endif %}
-            {% endfor %}
-        </div>
     </section>
 
     <section class="profile-panel">
