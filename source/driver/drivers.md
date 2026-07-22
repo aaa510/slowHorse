@@ -21,6 +21,6 @@
 | 17 | Esteban Ocon | Haas | 3 |
 | 18 | Fernando Alonso | Aston Martin | 1 |
 | 19 | Nico Hulkenberg | Audi | 0 |
-| 20 | Sergio Perez | Racing Bulls | 0 |
-| 21 | Valtteri Bottas | Mercedes | 0 |
+| 20 | Sergio Perez | Cadillac | 0 |
+| 21 | Valtteri Bottas | Cadillac | 0 |
 | 22 | Lance Stroll | Aston Martin | 0 |
