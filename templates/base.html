@@ -13,10 +13,15 @@
 <body class="{% block body_class %}{% endblock %}">
     <header class="topbar">
         {% if music_tracks %}
-            <button class="music-toggle" type="button" aria-pressed="false">
-                <span class="music-icon" aria-hidden="true">♪</span>
-                <span class="music-label">播放</span>
-            </button>
+            <div class="music-player" aria-label="音乐播放器">
+                <button class="music-step" type="button" data-music-prev aria-label="上一首">|&lt;</button>
+                <button class="music-toggle" type="button" aria-pressed="false">
+                    <span class="music-icon" aria-hidden="true">♪</span>
+                    <span class="music-label">播放</span>
+                </button>
+                <button class="music-step" type="button" data-music-next aria-label="下一首">&gt;|</button>
+                <span class="music-track" title=""></span>
+            </div>
             <audio id="site-music" preload="auto"></audio>
         {% endif %}
         <nav class="site-tabs" aria-label="主导航">
@@ -53,58 +58,185 @@
         {% block content %}{% endblock %}
     </main>
     <script>
-        document.querySelectorAll(".flash:not(.error)").forEach((flash) => {
-            window.setTimeout(() => {
-                flash.classList.add("is-hiding");
-                window.setTimeout(() => flash.remove(), 220);
-            }, 1600);
+        const initFlashMessages = () => {
+            document.querySelectorAll(".flash:not(.error):not([data-flash-ready])").forEach((flash) => {
+                flash.dataset.flashReady = "true";
+                window.setTimeout(() => {
+                    flash.classList.add("is-hiding");
+                    window.setTimeout(() => flash.remove(), 220);
+                }, 1600);
+            });
+        };
+
+        const initCountdowns = () => {
+            document.querySelectorAll(".race-countdown:not([data-countdown-ready])").forEach((countdown) => {
+                countdown.dataset.countdownReady = "true";
+                const targetTime = new Date(countdown.dataset.raceStart).getTime();
+                const daysEl = countdown.querySelector("[data-countdown-days]");
+                const hoursEl = countdown.querySelector("[data-countdown-hours]");
+                const minutesEl = countdown.querySelector("[data-countdown-minutes]");
+                const secondsEl = countdown.querySelector("[data-countdown-seconds]");
+
+                const renderCountdown = () => {
+                    const remaining = Math.max(0, targetTime - Date.now());
+                    const totalSeconds = Math.floor(remaining / 1000);
+                    const days = Math.floor(totalSeconds / 86400);
+                    const hours = Math.floor((totalSeconds % 86400) / 3600);
+                    const minutes = Math.floor((totalSeconds % 3600) / 60);
+                    const seconds = totalSeconds % 60;
+
+                    daysEl.textContent = String(days);
+                    hoursEl.textContent = String(hours).padStart(2, "0");
+                    minutesEl.textContent = String(minutes).padStart(2, "0");
+                    secondsEl.textContent = String(seconds).padStart(2, "0");
+                };
+
+                renderCountdown();
+                window.setInterval(renderCountdown, 1000);
+            });
+        };
+
+        const initRaceDialogs = () => {
+            document.querySelectorAll("[data-dialog]:not([data-dialog-ready])").forEach((trigger) => {
+                trigger.dataset.dialogReady = "true";
+                trigger.addEventListener("click", () => {
+                    const dialog = document.getElementById(trigger.dataset.dialog);
+                    if (dialog) {
+                        dialog.showModal();
+                    }
+                });
+            });
+
+            document.querySelectorAll(".race-dialog:not([data-close-ready])").forEach((dialog) => {
+                dialog.dataset.closeReady = "true";
+                dialog.addEventListener("click", (event) => {
+                    if (event.target === dialog) {
+                        dialog.close();
+                    }
+                });
+            });
+        };
+
+        const initPageEffects = () => {
+            initFlashMessages();
+            initCountdowns();
+            initRaceDialogs();
+        };
+
+        const replaceOrRemove = (selector, nextDocument) => {
+            const current = document.querySelector(selector);
+            const next = nextDocument.querySelector(selector);
+            if (current && next) {
+                current.replaceWith(next);
+            } else if (current && !next) {
+                current.remove();
+            } else if (!current && next) {
+                document.querySelector(".topbar").insertAdjacentElement("afterend", next);
+            }
+        };
+
+        const loadPage = async (url, pushState = true) => {
+            document.documentElement.classList.add("is-navigating");
+            try {
+                const response = await fetch(url, {
+                    headers: {"X-Requested-With": "fetch"},
+                    credentials: "same-origin",
+                });
+                if (!response.ok || response.redirected) {
+                    window.location.href = response.url || url;
+                    return;
+                }
+
+                const html = await response.text();
+                const nextDocument = new DOMParser().parseFromString(html, "text/html");
+                const nextMain = nextDocument.querySelector("main");
+                const nextNav = nextDocument.querySelector(".site-tabs");
+                if (!nextMain || !nextNav) {
+                    window.location.href = url;
+                    return;
+                }
+
+                document.title = nextDocument.title;
+                document.body.className = nextDocument.body.className;
+                document.querySelector("main").replaceWith(nextMain);
+                document.querySelector(".site-tabs").replaceWith(nextNav);
+                replaceOrRemove(".flash-stack", nextDocument);
+                if (pushState) {
+                    window.history.pushState({}, "", url);
+                }
+                window.scrollTo({top: 0, behavior: "auto"});
+                initPageEffects();
+            } catch (error) {
+                window.location.href = url;
+            } finally {
+                document.documentElement.classList.remove("is-navigating");
+            }
+        };
+
+        document.addEventListener("click", (event) => {
+            const link = event.target.closest("a[href]");
+            if (!link || event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) {
+                return;
+            }
+
+            const url = new URL(link.href, window.location.href);
+            if (url.origin !== window.location.origin || url.pathname === window.location.pathname && url.search === window.location.search) {
+                return;
+            }
+            if (link.target || link.hasAttribute("download") || link.dataset.fullReload === "true") {
+                return;
+            }
+
+            event.preventDefault();
+            loadPage(url.href);
         });
 
-        document.querySelectorAll(".race-countdown").forEach((countdown) => {
-            const targetTime = new Date(countdown.dataset.raceStart).getTime();
-            const daysEl = countdown.querySelector("[data-countdown-days]");
-            const hoursEl = countdown.querySelector("[data-countdown-hours]");
-            const minutesEl = countdown.querySelector("[data-countdown-minutes]");
-            const secondsEl = countdown.querySelector("[data-countdown-seconds]");
-
-            const renderCountdown = () => {
-                const remaining = Math.max(0, targetTime - Date.now());
-                const totalSeconds = Math.floor(remaining / 1000);
-                const days = Math.floor(totalSeconds / 86400);
-                const hours = Math.floor((totalSeconds % 86400) / 3600);
-                const minutes = Math.floor((totalSeconds % 3600) / 60);
-                const seconds = totalSeconds % 60;
-
-                daysEl.textContent = String(days);
-                hoursEl.textContent = String(hours).padStart(2, "0");
-                minutesEl.textContent = String(minutes).padStart(2, "0");
-                secondsEl.textContent = String(seconds).padStart(2, "0");
-            };
-
-            renderCountdown();
-            window.setInterval(renderCountdown, 1000);
-        });
+        window.addEventListener("popstate", () => loadPage(window.location.href, false));
+        initPageEffects();
 
         (() => {
             const tracks = {{ music_tracks|tojson }};
             const audio = document.querySelector("#site-music");
             const toggle = document.querySelector(".music-toggle");
-            if (!tracks.length || !audio || !toggle) {
+            const prevButton = document.querySelector("[data-music-prev]");
+            const nextButton = document.querySelector("[data-music-next]");
+            const trackLabel = document.querySelector(".music-track");
+            if (!tracks.length || !audio || !toggle || !prevButton || !nextButton || !trackLabel) {
                 return;
             }
 
-            let trackIndex = Number(window.localStorage.getItem("musicTrackIndex") || "0");
+            const trackIndexKey = "musicTrackIndex";
+            const trackTimeKey = "musicTrackTime";
+            const mutedKey = "musicMuted";
+            let trackIndex = Number(window.localStorage.getItem(trackIndexKey) || "0");
             if (!Number.isInteger(trackIndex) || trackIndex < 0 || trackIndex >= tracks.length) {
                 trackIndex = 0;
             }
 
             audio.volume = 0.42;
-            audio.muted = window.localStorage.getItem("musicMuted") === "true";
+            audio.muted = window.localStorage.getItem(mutedKey) === "true";
 
             const setTrack = (index) => {
-                trackIndex = index % tracks.length;
+                trackIndex = (index + tracks.length) % tracks.length;
                 audio.src = tracks[trackIndex].url;
-                window.localStorage.setItem("musicTrackIndex", String(trackIndex));
+                trackLabel.textContent = tracks[trackIndex].name;
+                trackLabel.title = tracks[trackIndex].name;
+                window.localStorage.setItem(trackIndexKey, String(trackIndex));
+            };
+
+            const savedTime = Number(window.localStorage.getItem(trackTimeKey) || "0");
+            const restoreTime = () => {
+                if (Number.isFinite(savedTime) && savedTime > 0 && savedTime < audio.duration - 1) {
+                    audio.currentTime = savedTime;
+                }
+            };
+
+            const savePlaybackState = () => {
+                if (!Number.isFinite(audio.currentTime)) {
+                    return;
+                }
+                window.localStorage.setItem(trackIndexKey, String(trackIndex));
+                window.localStorage.setItem(trackTimeKey, String(audio.currentTime));
             };
 
             const renderState = () => {
@@ -115,26 +247,41 @@
             };
 
             const play = () => audio.play().then(renderState).catch(renderState);
+            const switchTrack = (offset) => {
+                setTrack(trackIndex + offset);
+                window.localStorage.setItem(trackTimeKey, "0");
+                audio.currentTime = 0;
+                audio.muted = false;
+                window.localStorage.setItem(mutedKey, "false");
+                play();
+            };
 
             setTrack(trackIndex);
+            audio.addEventListener("loadedmetadata", restoreTime, { once: true });
             renderState();
             play();
 
             audio.addEventListener("ended", () => {
                 setTrack(trackIndex + 1);
+                window.localStorage.setItem(trackTimeKey, "0");
                 play();
             });
+
+            audio.addEventListener("timeupdate", savePlaybackState);
+            window.addEventListener("pagehide", savePlaybackState);
+            prevButton.addEventListener("click", () => switchTrack(-1));
+            nextButton.addEventListener("click", () => switchTrack(1));
 
             toggle.addEventListener("click", () => {
                 if (audio.paused) {
                     audio.muted = false;
-                    window.localStorage.setItem("musicMuted", "false");
+                    window.localStorage.setItem(mutedKey, "false");
                     play();
                     return;
                 }
 
                 audio.muted = !audio.muted;
-                window.localStorage.setItem("musicMuted", String(audio.muted));
+                window.localStorage.setItem(mutedKey, String(audio.muted));
                 renderState();
             });
         })();

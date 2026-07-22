@@ -85,9 +85,11 @@ body:not(.home-page) .topbar {
 
 .site-tabs a,
 .link-button,
-.music-toggle {
+.music-toggle,
+.music-step {
     display: inline-flex;
     align-items: center;
+    justify-content: center;
     min-height: 36px;
     padding: 8px 12px;
     border: 1px solid transparent;
@@ -103,7 +105,8 @@ body:not(.home-page) .topbar {
 
 body:not(.home-page) .site-tabs a,
 body:not(.home-page) .link-button,
-body:not(.home-page) .music-toggle {
+body:not(.home-page) .music-toggle,
+body:not(.home-page) .music-step {
     color: rgba(255, 255, 255, 0.74);
     background: rgba(255, 255, 255, 0.06);
 }
@@ -111,7 +114,8 @@ body:not(.home-page) .music-toggle {
 body:not(.home-page) .site-tabs a:hover,
 body:not(.home-page) .site-tabs a.active,
 body:not(.home-page) .link-button:hover,
-body:not(.home-page) .music-toggle:hover {
+body:not(.home-page) .music-toggle:hover,
+body:not(.home-page) .music-step:hover {
     border-color: rgba(215, 255, 54, 0.5);
     color: white;
     background: rgba(215, 255, 54, 0.12);
@@ -120,15 +124,38 @@ body:not(.home-page) .music-toggle:hover {
 .site-tabs a:hover,
 .site-tabs a.active,
 .link-button:hover,
-.music-toggle:hover {
+.music-toggle:hover,
+.music-step:hover {
     border-color: rgba(215, 255, 54, 0.55);
     color: white;
     background: rgba(215, 255, 54, 0.13);
 }
 
+.music-player {
+    display: inline-grid;
+    grid-template-columns: 34px auto 34px minmax(92px, 180px);
+    align-items: center;
+    gap: 6px;
+    min-width: 0;
+    padding: 4px;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 999px;
+    background: rgba(0, 0, 0, 0.22);
+    backdrop-filter: blur(16px);
+}
+
 .music-toggle {
     gap: 8px;
     white-space: nowrap;
+}
+
+.music-step {
+    width: 34px;
+    min-height: 34px;
+    padding: 0;
+    font-family: "Barlow Condensed", sans-serif;
+    font-size: 14px;
+    letter-spacing: 0;
 }
 
 .music-toggle[aria-pressed="true"] {
@@ -145,6 +172,16 @@ body:not(.home-page) .music-toggle:hover {
     color: var(--acid);
     font-size: 16px;
     line-height: 1;
+}
+
+.music-track {
+    min-width: 0;
+    overflow: hidden;
+    color: rgba(255, 255, 255, 0.72);
+    font-size: 12px;
+    font-weight: 700;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 .nav-form {
@@ -2057,10 +2094,21 @@ select {
 
     .site-tabs a,
     .link-button,
-    .music-toggle {
+    .music-toggle,
+    .music-step {
         min-height: 32px;
         padding: 7px 9px;
         font-size: 13px;
+    }
+
+    .music-player {
+        grid-template-columns: 30px auto 30px minmax(72px, 132px);
+    }
+
+    .music-step {
+        width: 30px;
+        min-height: 30px;
+        padding: 0;
     }
 
     .home-hero {
@@ -2196,8 +2244,13 @@ select {
         padding: 14px 16px;
     }
 
-    .music-toggle {
+    .music-player {
         justify-self: start;
+        max-width: min(100%, 360px);
+    }
+
+    .music-track {
+        max-width: 112px;
     }
 
     .home-hero {

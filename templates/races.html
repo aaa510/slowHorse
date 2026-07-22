@@ -100,22 +100,4 @@
     {% endfor %}
 </section>
 
-<script>
-    document.querySelectorAll("[data-dialog]").forEach((trigger) => {
-        trigger.addEventListener("click", () => {
-            const dialog = document.getElementById(trigger.dataset.dialog);
-            if (dialog) {
-                dialog.showModal();
-            }
-        });
-    });
-
-    document.querySelectorAll(".race-dialog").forEach((dialog) => {
-        dialog.addEventListener("click", (event) => {
-            if (event.target === dialog) {
-                dialog.close();
-            }
-        });
-    });
-</script>
 {% endblock %}
