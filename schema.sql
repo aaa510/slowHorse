@@ -2,6 +2,7 @@ drop table if exists point_transactions;
 drop table if exists answers;
 drop table if exists question_options;
 drop table if exists questions;
+drop table if exists notification_outbox;
 drop table if exists discussion_replies;
 drop table if exists discussion_posts;
 drop table if exists users;
@@ -85,4 +86,14 @@ create table discussion_replies (
     created_at text not null default current_timestamp,
     foreign key (post_id) references discussion_posts (id),
     foreign key (user_id) references users (id)
+);
+
+create table notification_outbox (
+    id integer primary key autoincrement,
+    message text not null,
+    status text not null default 'pending',
+    attempts integer not null default 0,
+    last_error text,
+    created_at text not null default current_timestamp,
+    sent_at text
 );

@@ -5,6 +5,8 @@ import secrets
 import sqlite3
 import mimetypes
 import uuid
+import urllib.error
+import urllib.request
 from html import escape
 from functools import wraps
 from datetime import datetime, timezone, timedelta
@@ -12,6 +14,7 @@ from datetime import datetime, timezone, timedelta
 from flask import (
     Flask,
     abort,
+    current_app,
     flash,
     g,
     redirect,
@@ -154,6 +157,11 @@ def create_app():
         PERMANENT_SESSION_LIFETIME=60 * 60 * 2,
         TEMPLATES_AUTO_RELOAD=True,
         MAX_CONTENT_LENGTH=5 * 1024 * 1024,
+        NAPCAT_API_URL=os.environ.get("NAPCAT_API_URL", ""),
+        NAPCAT_ACCESS_TOKEN=os.environ.get("NAPCAT_ACCESS_TOKEN", ""),
+        NAPCAT_GROUP_ID=os.environ.get("NAPCAT_GROUP_ID", ""),
+        NAPCAT_TIMEOUT=float(os.environ.get("NAPCAT_TIMEOUT", "3")),
+        NOTIFICATION_RELAY_TOKEN=os.environ.get("NOTIFICATION_RELAY_TOKEN", ""),
     )
     os.makedirs(DISCUSSION_UPLOAD_DIR, exist_ok=True)
 
@@ -363,6 +371,19 @@ def create_app():
             )
         add_points_transaction(g.user["id"], question_id, -stake, "create_question", commit=False)
         db.commit()
+        notify_new_question(
+            {
+                "id": question_id,
+                "title": title,
+                "stake": stake,
+                "race_round": race["round"],
+                "race_name": race["name"],
+                "race_start_at": race["start_at"],
+                "creator_name": g.user["username"],
+                "options": option_values,
+                "url": url_for("predict_page", tab="answer", _external=True),
+            }
+        )
         flash("出题成功，积分已进入本题奖池。", "success")
         return redirect(url_for("predict_page", tab="answer"))
 
@@ -533,6 +554,62 @@ def create_app():
         upgrade_db()
         print("Upgraded the database.")
 
+    @app.route("/api/napcat-notifications", methods=("GET",))
+    def pending_napcat_notifications():
+        require_notification_relay_token()
+        limit = request.args.get("limit", "20")
+        limit = int(limit) if limit.isdigit() else 20
+        limit = max(1, min(limit, 50))
+        rows = query_db(
+            """
+            select id, message, attempts, created_at
+            from notification_outbox
+            where status = 'pending'
+            order by id asc
+            limit ?
+            """,
+            (limit,),
+        )
+        return {
+            "notifications": [
+                {
+                    "id": row["id"],
+                    "message": row["message"],
+                    "attempts": row["attempts"],
+                    "created_at": row["created_at"],
+                }
+                for row in rows
+            ]
+        }
+
+    @app.route("/api/napcat-notifications/<int:notification_id>/ack", methods=("POST",))
+    def ack_napcat_notification(notification_id):
+        require_notification_relay_token()
+        data = request.get_json(silent=True) or {}
+        status = data.get("status")
+        if status not in {"sent", "failed"}:
+            abort(400)
+        error = str(data.get("error", ""))[:500]
+        if status == "sent":
+            execute_db(
+                """
+                update notification_outbox
+                set status = 'sent', sent_at = current_timestamp, last_error = null
+                where id = ?
+                """,
+                (notification_id,),
+            )
+        else:
+            execute_db(
+                """
+                update notification_outbox
+                set attempts = attempts + 1, last_error = ?
+                where id = ? and status = 'pending'
+                """,
+                (error, notification_id),
+            )
+        return {"ok": True}
+
     return app
 
 
@@ -554,6 +631,19 @@ def validate_csrf():
     token = request.form.get("csrf_token", "")
     if not token or not secrets.compare_digest(token, session.get("csrf_token", "")):
         abort(400)
+
+
+def require_notification_relay_token():
+    expected = current_app.config.get("NOTIFICATION_RELAY_TOKEN", "").strip()
+    if not expected:
+        abort(404)
+    auth_header = request.headers.get("Authorization", "")
+    supplied = ""
+    if auth_header.startswith("Bearer "):
+        supplied = auth_header.removeprefix("Bearer ").strip()
+    supplied = supplied or request.args.get("token", "").strip()
+    if not supplied or not secrets.compare_digest(supplied, expected):
+        abort(403)
 
 
 def validate_post_input(title, body):
@@ -942,6 +1032,72 @@ def validate_question_input(title, stake_text, options):
     return None
 
 
+def notify_new_question(question):
+    api_url = current_app.config.get("NAPCAT_API_URL", "").strip()
+    group_id = str(current_app.config.get("NAPCAT_GROUP_ID", "")).strip()
+    if not api_url or not group_id:
+        if current_app.config.get("NOTIFICATION_RELAY_TOKEN", "").strip():
+            enqueue_notification(build_new_question_message(question))
+        return
+
+    endpoint = api_url.rstrip("/")
+    if not endpoint.endswith("/send_group_msg"):
+        endpoint = f"{endpoint}/send_group_msg"
+
+    payload = {
+        "group_id": int(group_id) if group_id.isdigit() else group_id,
+        "message": build_new_question_message(question),
+    }
+    data = json.dumps(payload, ensure_ascii=False).encode("utf-8")
+    headers = {"Content-Type": "application/json"}
+    token = current_app.config.get("NAPCAT_ACCESS_TOKEN", "").strip()
+    if token:
+        headers["Authorization"] = f"Bearer {token}"
+
+    req = urllib.request.Request(endpoint, data=data, headers=headers, method="POST")
+    try:
+        with urllib.request.urlopen(req, timeout=current_app.config["NAPCAT_TIMEOUT"]) as response:
+            response_body = response.read().decode("utf-8", errors="replace")
+    except (urllib.error.URLError, TimeoutError, OSError) as exc:
+        current_app.logger.warning("NapCat question notification failed: %s", exc)
+        return
+
+    try:
+        result = json.loads(response_body)
+    except json.JSONDecodeError:
+        current_app.logger.warning("NapCat question notification returned non-JSON: %s", response_body[:200])
+        return
+
+    if result.get("retcode") not in (None, 0):
+        current_app.logger.warning("NapCat question notification failed: %s", result)
+
+
+def build_new_question_message(question):
+    option_lines = "\n".join(f"{index}. {label}" for index, label in enumerate(question["options"], start=1))
+    return (
+        "【慢马争霸赛】新竞猜发布\n"
+        f"题目：{question['title']}\n"
+        f"出题者：{question['creator_name']}\n"
+        f"赛事：Round {question['race_round']} · {question['race_name']}\n"
+        f"截止：{question['race_start_at']}（北京时间）\n"
+        f"奖池：{question['stake']} Pts\n"
+        f"选项：\n{option_lines}\n"
+        f"去竞猜：{question['url']}"
+    )
+
+
+def enqueue_notification(message):
+    db = get_db()
+    db.execute(
+        """
+        insert into notification_outbox (message, status)
+        values (?, 'pending')
+        """,
+        (message,),
+    )
+    db.commit()
+
+
 def validate_answer_bet(bet_text):
     if not bet_text.isdigit():
         return "投注积分必须是整数。"
@@ -1311,6 +1467,16 @@ def upgrade_db():
             created_at text not null default current_timestamp,
             foreign key (post_id) references discussion_posts (id),
             foreign key (user_id) references users (id)
+        );
+
+        create table if not exists notification_outbox (
+            id integer primary key autoincrement,
+            message text not null,
+            status text not null default 'pending',
+            attempts integer not null default 0,
+            last_error text,
+            created_at text not null default current_timestamp,
+            sent_at text
         );
         """
     )
